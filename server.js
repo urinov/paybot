@@ -45,8 +45,9 @@ if (bot) {
 
       orders.set(orderId, { amount: amountTiyin, state: 'new', userId: ctx.from.id });
 
-      const paymeUrl = `${BASE_URL}/api/checkout-url?order_id=${orderId}&amount=${amountTiyin}`;
-      const clickUrl = `${BASE_URL}/api/click-url?order_id=${orderId}&amount=${amountTiyin}`;
+      const paymeUrl = `${BASE_URL}/api/checkout-url?order_id=${orderId}&amount=${amountTiyin}&redirect=1`;
+      const clickUrl = `${BASE_URL}/api/click-url?order_id=${orderId}&amount=${amountTiyin}&redirect=1`;
+
 
       await ctx.reply(
         `🧾 Buyurtma: #${orderId}\nSumma: ${(amountTiyin/100).toFixed(2)} so‘m\nTo‘lov usulini tanlang:`,
@@ -175,12 +176,16 @@ app.post('/payme', async (req, res) => {
 app.get('/api/click-url', (req, res) => {
   const order_id     = String(req.query.order_id || '');
   const amount_tiyin = Number(req.query.amount || 0);
-  if (!order_id || !amount_tiyin) return res.json({ error: 'order_id va amount (tiyin) shart' });
+  if (!order_id || !amount_tiyin) {
+    return res.status(400).json({ error: 'order_id va amount (tiyin) shart' });
+  }
 
   const prev = orders.get(order_id) || { amount: 0, state: 'new' };
   orders.set(order_id, { ...prev, amount: amount_tiyin });
 
+  // Click summasi so‘mda, N.NN
   const amount_soum = (amount_tiyin / 100).toFixed(2);
+
   const u = new URL('https://my.click.uz/services/pay');
   u.searchParams.set('service_id',  process.env.CLICK_SERVICE_ID);
   u.searchParams.set('merchant_id', process.env.CLICK_MERCHANT_ID);
@@ -192,8 +197,17 @@ app.get('/api/click-url', (req, res) => {
   if (process.env.CLICK_RETURN_URL) {
     u.searchParams.set('return_url', process.env.CLICK_RETURN_URL);
   }
-  res.json({ url: u.toString() });
+
+  const url = u.toString();
+
+  // ?redirect=1 bo‘lsa — to‘g‘ridan-to‘g‘ri yo‘naltiramiz
+  if (String(req.query.redirect) === '1') {
+    return res.redirect(url);
+  }
+  // aks holda JSON (debug uchun)
+  return res.json({ url });
 });
+
 
 // ===================== CLICK: CALLBACK =====================
 app.post('/click/callback', async (req, res) => {
@@ -296,9 +310,13 @@ app.post('/click/callback', async (req, res) => {
 // ===================== PAYME: CHECKOUT URL (redirect) =====================
 app.get('/api/checkout-url', (req, res) => {
   const order_id = String(req.query.order_id || '');
-  const amount   = Number(req.query.amount || 0);
-  if (!order_id || !amount) return res.json({ error: 'order_id va amount (tiyin) shart' });
+  const amount   = Number(req.query.amount || 0); // tiyinda
 
+  if (!order_id || !amount) {
+    return res.status(400).json({ error: 'order_id va amount (tiyin) shart' });
+  }
+
+  // buyurtma cache
   const prev = orders.get(order_id) || { amount: 0, state: 'new' };
   orders.set(order_id, { ...prev, amount });
 
@@ -311,8 +329,15 @@ app.get('/api/checkout-url', (req, res) => {
     currencyIso:    'UZS',
     description:    'To‘lov'
   });
-  res.json({ url });
+
+  // ?redirect=1 bo‘lsa — to‘g‘ridan-to‘g‘ri yo‘naltiramiz
+  if (String(req.query.redirect) === '1') {
+    return res.redirect(url);
+  }
+  // aks holda JSON (debug uchun)
+  return res.json({ url });
 });
+
 
 // ---- Qo‘shimcha: test uchun yangi order beruvchi endpoint ----
 app.get('/api/new-order', (req, res) => {
