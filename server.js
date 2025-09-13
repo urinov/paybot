@@ -51,11 +51,13 @@ if (bot) {
 
       await ctx.reply(
         `🧾 <b>Buyurtma:</b> #${orderId}\n<b>Summa:</b> ${(amountTiyin/100).toFixed(2)} so‘m\nTo‘lov usulini tanlang:`,
-        parse_mode: 'HTML'
-        { reply_markup: { inline_keyboard: [[
-          { text: '💳 Payme', url: paymeUrl },
-          { text: '💠 Click', url: clickUrl }
-        ]]} }
+        {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: [[
+            { text: '💳 Payme', url: paymeUrl },
+            { text: '💠 Click', url: clickUrl }
+          ]]}
+        }
       );
     } catch (e) {
       console.error(e);
