@@ -38,39 +38,62 @@ function getNextOrderId() { const id = String(orderCounter).padStart(7, '0'); or
 
 // ====== Telegram: /start — to'lov tugmalari ======
 if (bot) {
+  // foydalanuvchi ismini chiroyli yig'ish helper
+  const fullName = (u) => {
+    const fn = [u?.first_name, u?.last_name].filter(Boolean).join(' ');
+    return fn || (u?.username ? '@' + u.username : 'foydalanuvchi');
+  };
+  const soM = (tiyin) => (tiyin / 100).toLocaleString('uz-UZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   bot.start(async (ctx) => {
     try {
-      const orderId = getNextOrderId();
-      const amountTiyin = 1100000; // 11 000 so'm demo
+      const orderId    = getNextOrderId();
+      const amountTiyin = 1100000; // demo: 11 000 so'm
 
+      // buyurtmani saqlab qo'yamiz
       orders.set(orderId, { amount: amountTiyin, state: 'new', userId: ctx.from.id });
 
+      // to'g'ridan-to'g'ri yo'naltiradigan havolalar (redirect=1)
       const paymeUrl = `${BASE_URL}/api/checkout-url?order_id=${orderId}&amount=${amountTiyin}&redirect=1`;
       const clickUrl = `${BASE_URL}/api/click-url?order_id=${orderId}&amount=${amountTiyin}&redirect=1`;
 
+      const text =
+        `👋 Salom, <b>${fullName(ctx.from)}</b>!\n\n` +
+        `Siz <b>shaxsiy rivojlanish</b> yo‘lida to‘g‘ri yo‘ldasiz. ` +
+        `Faqat bitta qadam qoldi — to‘lovni tasdiqlang.\n\n` +
+        `🧾 <b>Buyurtma:</b> #${orderId}\n` +
+        `💰 <b>Summa:</b> ${soM(amountTiyin)} so‘m\n\n` +
+        `Quyidan to‘lov usulini tanlang:`;
 
-      await ctx.reply(
-        `🧾\n<b>Buyurtma:</b> #${orderId}\n<b>Summa:</b> ${(amountTiyin/100).toFixed(2)} so‘m\nTo‘lov usulini tanlang:`,
-        {
-          parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: [[
-            { text: '💳 Payme', url: paymeUrl },
-            { text: '💠 Click', url: clickUrl }
-          ]]}
+      await ctx.reply(text, {
+        parse_mode: 'HTML',
+        // link previewlar chiqmasin
+        disable_web_page_preview: true,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '💳 Payme', url: paymeUrl },
+              { text: '💠 Click', url: clickUrl }
+            ],
+            // istasangiz, yana yordam tugmasi ham qo'shish mumkin:
+            // [{ text: '❓ Yordam', url: 'https://t.me/username' }]
+          ]
         }
-      );
+      });
     } catch (e) {
       console.error(e);
       await ctx.reply('Server xatosi. Keyinroq urinib ko‘ring.');
     }
   });
 
-  bot.on('message', (ctx) => ctx.reply('To‘lov uchun /start ni bosing.'));
+  bot.on('message', (ctx) =>
+    ctx.reply('To‘lov uchun /start ni bosing.', { disable_web_page_preview: true })
+  );
 
   app.post('/telegram/webhook', (req, res) => {
     bot.handleUpdate(req.body)
       .then(() => res.sendStatus(200))
-      .catch((e)=>{ console.error('Bot handleUpdate error', e); res.sendStatus(500); });
+      .catch((e) => { console.error('Bot handleUpdate error', e); res.sendStatus(500); });
   });
 }
 
