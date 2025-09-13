@@ -1,4 +1,4 @@
-// server.js — Telegram bot + Payme + Click + 1-martalik kanal invite link
+// server.js — Telegram bot + Payme + Click + 1-martalik kanal invite-link
 
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -18,65 +18,57 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 app.use(bodyParser.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true })); // Click x-www-form-urlencoded yuboradi
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ---- Telegram bot ----
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const TG_CHANNEL_ID = process.env.TG_CHANNEL_ID; // masalan: -100xxxxxxxxxx
-const BASE_URL = process.env.BASE_URL; // Render servising to'liq https URL
+const BOT_TOKEN    = process.env.BOT_TOKEN;
+const TG_CHANNEL_ID= process.env.TG_CHANNEL_ID;   // -100xxxxxxx
+const BASE_URL     = process.env.BASE_URL;        // https://<service>.onrender.com
 
+const bot = BOT_TOKEN ? new Telegraf(BOT_TOKEN) : null;
 if (!BOT_TOKEN || !TG_CHANNEL_ID || !BASE_URL) {
-  console.warn('BOT_TOKEN, TG_CHANNEL_ID, BASE_URL envs required');
+  console.warn('[WARN] BOT_TOKEN, TG_CHANNEL_ID va BASE_URL kerak (Environment Variables).');
 }
 
-const bot = new Telegraf(BOT_TOKEN);
-
-// Demo "DB"
+// ---- "DB" (demo) ----
 const orders = new Map(); // order_id -> { amount(=tiyin), state, userId, ... }
-let orderCounter = 1; // 0000001 dan boshlanadi
-function getNextOrderId() {
-  const id = String(orderCounter).padStart(7, '0');
-  orderCounter++;
-  return id;
+let orderCounter = 1;
+function getNextOrderId() { const id = String(orderCounter).padStart(7, '0'); orderCounter++; return id; }
+
+// ====== Telegram: /start — to'lov tugmalari ======
+if (bot) {
+  bot.start(async (ctx) => {
+    try {
+      const orderId = getNextOrderId();
+      const amountTiyin = 1100000; // 11 000 so'm demo
+
+      orders.set(orderId, { amount: amountTiyin, state: 'new', userId: ctx.from.id });
+
+      const paymeUrl = `${BASE_URL}/api/checkout-url?order_id=${orderId}&amount=${amountTiyin}`;
+      const clickUrl = `${BASE_URL}/api/click-url?order_id=${orderId}&amount=${amountTiyin}`;
+
+      await ctx.reply(
+        `🧾 Buyurtma: #${orderId}\nSumma: ${(amountTiyin/100).toFixed(2)} so‘m\nTo‘lov usulini tanlang:`,
+        { reply_markup: { inline_keyboard: [[
+          { text: '💳 Payme', url: paymeUrl },
+          { text: '💠 Click', url: clickUrl }
+        ]]} }
+      );
+    } catch (e) {
+      console.error(e);
+      await ctx.reply('Server xatosi. Keyinroq urinib ko‘ring.');
+    }
+  });
+
+  bot.on('message', (ctx) => ctx.reply('To‘lov uchun /start ni bosing.'));
+
+  app.post('/telegram/webhook', (req, res) => {
+    bot.handleUpdate(req.body)
+      .then(() => res.sendStatus(200))
+      .catch((e)=>{ console.error('Bot handleUpdate error', e); res.sendStatus(500); });
+  });
 }
-
-// === Telegram: /start — to'lov tanlash va link yuborish oqimi ===
-bot.start(async (ctx) => {
-  try {
-    const orderId = getNextOrderId();
-    const amountTiyin = 1100000; // 11 000 so‘m misol uchun
-
-    // buyurtmani saqlaymiz (foydalanuvchi bilan bog'lab)
-    orders.set(orderId, { amount: amountTiyin, state: 'new', userId: ctx.from.id });
-
-    // Payme va Click URL'larini backend orqali olamiz:
-    const paymeUrl = `${BASE_URL}/api/checkout-url?order_id=${orderId}&amount=${amountTiyin}`;
-    const clickUrl = `${BASE_URL}/api/click-url?order_id=${orderId}&amount=${amountTiyin}`;
-
-    await ctx.reply(
-      `🧾 Buyurtma: #${orderId}\nSumma: ${(amountTiyin/100).toFixed(2)} so‘m\nTo‘lov usulini tanlang:`,
-      {
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '💳 Payme', url: paymeUrl },
-            { text: '💠 Click', url: clickUrl }
-          ]]
-        }
-      }
-    );
-  } catch (e) {
-    console.error(e);
-    await ctx.reply('Server xatosi. Keyinroq urinib ko‘ring.');
-  }
-});
-
-// (ixtiyoriy) oddiy echo
-bot.on('message', (ctx) => ctx.reply('To‘lov uchun /start ni bosing.'));
-
-app.post('/telegram/webhook', (req, res) => {
-  bot.handleUpdate(req.body, res).catch((e)=>console.error('Bot handleUpdate error', e));
-});
 
 // ---- PAYME HELPERS ----
 function requirePaymeAuth(req, res) {
@@ -120,23 +112,27 @@ app.post('/payme', async (req, res) => {
       return res.json(ok(id, { transaction: txId, state: 1, create_time: time }));
     }
 
-    if (method === 'PerformTransaction')) {
+    if (method === 'PerformTransaction') {
       const { id: txId } = params;
       const order = [...orders.values()].find(o => o.paycom_transaction_id === txId);
       if (!order) return res.json(err(id, -31003, { uz: 'Tranzaksiya topilmadi' }));
       order.state = 'performed';
       order.perform_time = Date.now();
 
-      // 🔑 To'lov muvaffaqiyatli — invite link yaratamiz va userga yuboramiz
+      // ✅ To'lov muvaffaqiyatli — invite link yuboramiz
       try {
-        const invite = await bot.telegram.createChatInviteLink(TG_CHANNEL_ID, {
-          name: `Order ${orderId} (Payme)`,
-          expire_date: Math.floor(Date.now()/1000) + 3600, // 1 soat
-          member_limit: 1
-        });
-        if (order.userId) {
-          await bot.telegram.sendMessage(order.userId,
-            `✅ To‘lov qabul qilindi.\n🔗 Kanalga bir martalik kirish: ${invite.invite_link}\n⏳ Amal qilish muddati: 1 soat`);
+        if (bot) {
+          const orderId = [...orders.entries()].find(([,v])=>v.paycom_transaction_id===txId)?.[0];
+          const invite = await bot.telegram.createChatInviteLink(TG_CHANNEL_ID, {
+            name: `Order ${orderId} (Payme)`,
+            expire_date: Math.floor(Date.now()/1000) + 3600, // 1 soat
+            member_limit: 1
+          });
+          const userId = orders.get(orderId)?.userId;
+          if (userId) {
+            await bot.telegram.sendMessage(userId,
+              `✅ To‘lov qabul qilindi.\n🔗 Kanalga 1 martalik kirish: ${invite.invite_link}\n⏳ Amal qilish muddati: 1 soat`);
+          }
         }
       } catch (e) { console.error('Invite link (Payme) error:', e); }
 
@@ -261,16 +257,18 @@ app.post('/click/callback', async (req, res) => {
       order.state = 'performed';
       order.perform_time = Date.now();
 
-      // 🔑 To'lov muvaffaqiyatli — 1-martalik link yuboramiz
       try {
-        const invite = await bot.telegram.createChatInviteLink(TG_CHANNEL_ID, {
-          name: `Order ${orderId} (Click)`,
-          expire_date: Math.floor(Date.now()/1000) + 3600,
-          member_limit: 1
-        });
-        if (order.userId) {
-          await bot.telegram.sendMessage(order.userId,
-            `✅ To‘lov qabul qilindi.\n🔗 Kanalga 1 martalik kirish: ${invite.invite_link}\n⏳ Amal qilish muddati: 1 soat`);
+        if (bot) {
+          const invite = await bot.telegram.createChatInviteLink(TG_CHANNEL_ID, {
+            name: `Order ${orderId} (Click)`,
+            expire_date: Math.floor(Date.now()/1000) + 3600,
+            member_limit: 1
+          });
+          const userId = orders.get(orderId)?.userId;
+          if (userId) {
+            await bot.telegram.sendMessage(userId,
+              `✅ To‘lov qabul qilindi.\n🔗 Kanalga 1 martalik kirish: ${invite.invite_link}\n⏳ Amal qilish muddati: 1 soat`);
+          }
         }
       } catch (e) { console.error('Invite link (Click) error:', e); }
 
@@ -295,7 +293,7 @@ app.post('/click/callback', async (req, res) => {
   return res.json({ error: -3, error_note: 'Unknown action' });
 });
 
-// ===================== PAYME: CHECKOUT URL =====================
+// ===================== PAYME: CHECKOUT URL (redirect) =====================
 app.get('/api/checkout-url', (req, res) => {
   const order_id = String(req.query.order_id || '');
   const amount   = Number(req.query.amount || 0);
@@ -316,17 +314,25 @@ app.get('/api/checkout-url', (req, res) => {
   res.json({ url });
 });
 
+// ---- Qo‘shimcha: test uchun yangi order beruvchi endpoint ----
+app.get('/api/new-order', (req, res) => {
+  const amount = Number(req.query.amount || 1100000);
+  const orderId = getNextOrderId();
+  orders.set(orderId, { amount, state: 'new' });
+  res.json({ orderId, amount });
+});
+
 // ---- health & start ----
+app.get('/healthz', (_, res)=> res.send('ok'));
 app.get('/', (_, res)=> res.send('OK'));
+
 const port = process.env.PORT || 3000;
 app.listen(port, async () => {
   console.log('Server running on port ' + port);
-  // Webhook set (bir martalik yetarli; baribir har ishga tushganda qayta chaqilishidan zarar yo'q)
-  if (BOT_TOKEN && BASE_URL) {
+  if (bot && BASE_URL) {
     try {
       await bot.telegram.setWebhook(`${BASE_URL}/telegram/webhook`);
       console.log('Telegram webhook set to', `${BASE_URL}/telegram/webhook`);
     } catch (e) { console.error('setWebhook error', e); }
   }
 });
-
