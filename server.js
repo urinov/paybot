@@ -50,7 +50,7 @@ if (bot) {
 
 
       await ctx.reply(
-        `🧾 Buyurtma: #${orderId}\nSumma: ${(amountTiyin/100).toFixed(2)} so‘m\nTo‘lov usulini tanlang:`,
+        `🧾 <b>Buyurtma:</b> #${orderId}\n<b>Summa:</b> ${(amountTiyin/100).toFixed(2)} so‘m\nTo‘lov usulini tanlang:`,
         { reply_markup: { inline_keyboard: [[
           { text: '💳 Payme', url: paymeUrl },
           { text: '💠 Click', url: clickUrl }
