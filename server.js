@@ -1,4 +1,4 @@
-// server.js — barchasini bog'laydi
+// server.js — barchasini bog'laydi va prefikslarni to'g'ri o'rnatadi
 import express from 'express';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
@@ -20,6 +20,7 @@ app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Health
 app.get('/health', (_, res) => res.send('ok'));
 app.get('/',       (_, res) => res.send('OK'));
 
@@ -30,9 +31,12 @@ app.post('/telegram/webhook', (req, res) => {
     .catch((e) => { console.error('bot.handleUpdate error', e); res.sendStatus(500); });
 });
 
-// Payme/Click marshrutlari
-app.use(paymeRouter);
-app.use(clickRouter);
+/** MUHIM: Prefikslar.
+ *  paymeRouter ichidagi '/api/...' va '/' endi '/payme/...' ostida ishlaydi
+ *  clickRouter ichidagi '/api/...' va '/callback' endi '/click/...' ostida ishlaydi
+ */
+app.use('/payme', paymeRouter);
+app.use('/click', clickRouter);
 
 const port = process.env.PORT || 3000;
 app.listen(port, async () => {
