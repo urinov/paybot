@@ -1,8 +1,9 @@
-// store.js — buyurtmalar uchun umumiy in-memory storage
-export const orders = new Map(); // order_id -> { amount(=tiyin), state, ... }
-let orderCounter = 1;
+// store.js — juda sodda in-memory "DB"
+export const Orders = new Map(); // orderId -> { amount, state, userId, ... }
 
+let counter = 1;
 export function nextOrderId() {
-  const id = String(orderCounter++).padStart(7, '0');
+  const id = String(counter).padStart(7, '0');
+  counter += 1;
   return id;
 }
