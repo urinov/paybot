@@ -80,7 +80,7 @@ router.post('/', async (req, res) => {
       return res.json(ok(id, { transaction: params.id, state: 1, create_time: params.time }));
     }
 
-    if (method === 'PerformTransaction')) {
+    if (method === 'PerformTransaction') {
       const txId = params.id;
       const order = [...Orders.values()].find(o => o.paycom_transaction_id === txId);
       if (!order) return res.json(err(id, -31003, { uz: 'Tranzaksiya topilmadi' }));
