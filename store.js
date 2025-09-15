@@ -1,5 +1,5 @@
 // store.js — juda sodda in-memory "DB"
-export const Orders = new Map(); // orderId -> { amount, state, userId, ... }
+export const Orders = new Map(); // orderId -> { amount, state, userId, chat_id, deliver_url, ... }
 
 let counter = 1;
 export function nextOrderId() {
