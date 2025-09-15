@@ -1,6 +1,7 @@
+// utils/buildCheckoutUrl.js
 function toBase64(str){ return Buffer.from(str,'utf8').toString('base64'); }
 
-function buildCheckoutUrl({
+export function buildCheckoutUrl({
   checkoutOrigin='https://checkout.paycom.uz',
   merchantId, orderId, amountInTiyin,
   lang='uz', callbackUrl, callbackTimeoutMs=15000,
@@ -19,6 +20,3 @@ function buildCheckoutUrl({
   const b64 = toBase64(p.join(';'));
   return `${checkoutOrigin}/base64(${b64})`;
 }
-
-export { buildCheckoutUrl };
-
