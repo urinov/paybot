@@ -6,6 +6,7 @@ import fetch from 'node-fetch';
 
 const BOT_TOKEN     = process.env.BOT_TOKEN;
 const BASE_URL      = process.env.BASE_URL;      // https://<service>.onrender.com
+const TG_CHANNEL_ID = process.env.TG_CHANNEL_ID;
 if (!BOT_TOKEN) throw new Error('BOT_TOKEN env kerak');
 
 export const bot = new Telegraf(BOT_TOKEN);
