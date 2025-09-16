@@ -142,26 +142,39 @@ router.post('/', async (req, res) => {
       const txId = params.id;
       const order = [...Orders.values()].find(o => o.paycom_transaction_id === txId);
       if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound));
-
+    
       const now = Date.now();
+    
+      // 🔁 Idempotent: agar allaqachon bekor bo'lgan bo'lsa, holatni o'zgartirmay qaytaramiz
+      if (order.state === 'canceled_after_perform') {
+        return res.json(ok(id, { transaction: txId, state: -2, cancel_time: order.cancel_time }));
+      }
+      if (order.state === 'canceled') {
+        return res.json(ok(id, { transaction: txId, state: -1, cancel_time: order.cancel_time }));
+      }
+    
+      // ✅ Performed bo'lsa -> -2 (post-perform cancel). reason = null bo'lishi kerak
+      if (order.state === 'performed') {
+        order.state = 'canceled_after_perform';
+        order.cancel_time = now;
+        order.cancel_reason = null; // -2 uchun null
+        return res.json(ok(id, { transaction: txId, state: -2, cancel_time: order.cancel_time }));
+      }
+    
+      // ✅ Created/new bo'lsa -> -1 (pre-perform cancel). reason majburiy emas, ammo saqlash mumkin
+      order.state = 'canceled';
       order.cancel_time = now;
       order.cancel_reason = params.reason ?? 0;
-
-      if (order.state === 'performed') {
-        order.state = 'canceled_after_perform'; // Payme expects -2
-        return res.json(ok(id, { transaction: txId, state: -2, cancel_time: now }));
-      }
-
-      order.state = 'canceled'; // created/new → -1
-      return res.json(ok(id, { transaction: txId, state: -1, cancel_time: now }));
+      return res.json(ok(id, { transaction: txId, state: -1, cancel_time: order.cancel_time }));
     }
+
 
     /* ------------------------- CheckTransaction ---------------------- */
     if (method === 'CheckTransaction') {
       const txId = params.id;
       const order = [...Orders.values()].find(o => o.paycom_transaction_id === txId);
       if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound));
-
+    
       const map = {
         new: 0,
         created: 1,
@@ -169,16 +182,22 @@ router.post('/', async (req, res) => {
         canceled: -1,
         canceled_after_perform: -2
       };
-
+    
+      const state = map[order.state] ?? 0;
+    
+      // -2 holatda reason null bo‘lishi kerak (spec bo‘yicha)
+      const reason = state === -2 ? null : (order.cancel_reason ?? null);
+    
       return res.json(ok(id, {
         transaction: txId,
-        state: map[order.state] ?? 0,
+        state,
         create_time: order.paycom_time ?? 0,
         perform_time: order.perform_time ?? 0,
         cancel_time: order.cancel_time ?? 0,
-        reason: order.cancel_reason ?? null
+        reason
       }));
     }
+
 
     /* --------------------------- Fallback ---------------------------- */
     return res.json(err(id, -32601, MESSAGES.methodNotFound));
