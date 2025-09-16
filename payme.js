@@ -141,11 +141,11 @@ router.post('/', async (req, res) => {
     if (method === 'CancelTransaction') {
       const txId = params.id;
       const order = [...Orders.values()].find(o => o.paycom_transaction_id === txId);
-      if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound));
+      if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound)); // :contentReference[oaicite:0]{index=0}
     
       const now = Date.now();
     
-      // 🔁 Idempotent: agar allaqachon bekor bo'lgan bo'lsa, holatni o'zgartirmay qaytaramiz
+      // Idempotent javoblar
       if (order.state === 'canceled_after_perform') {
         return res.json(ok(id, { transaction: txId, state: -2, cancel_time: order.cancel_time }));
       }
@@ -153,15 +153,14 @@ router.post('/', async (req, res) => {
         return res.json(ok(id, { transaction: txId, state: -1, cancel_time: order.cancel_time }));
       }
     
-      // ✅ Performed bo'lsa -> -2 (post-perform cancel). reason = null bo'lishi kerak
       if (order.state === 'performed') {
         order.state = 'canceled_after_perform';
         order.cancel_time = now;
-        order.cancel_reason = null; // -2 uchun null
+        order.cancel_reason = params.reason ?? 0; // ❗️ -2 holatida reason saqlaymiz
         return res.json(ok(id, { transaction: txId, state: -2, cancel_time: order.cancel_time }));
       }
     
-      // ✅ Created/new bo'lsa -> -1 (pre-perform cancel). reason majburiy emas, ammo saqlash mumkin
+      // created/new → -1
       order.state = 'canceled';
       order.cancel_time = now;
       order.cancel_reason = params.reason ?? 0;
@@ -169,34 +168,29 @@ router.post('/', async (req, res) => {
     }
 
 
+
     /* ------------------------- CheckTransaction ---------------------- */
     if (method === 'CheckTransaction') {
       const txId = params.id;
       const order = [...Orders.values()].find(o => o.paycom_transaction_id === txId);
-      if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound));
+      if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound)); // :contentReference[oaicite:2]{index=2}
     
-      const map = {
-        new: 0,
-        created: 1,
-        performed: 2,
-        canceled: -1,
-        canceled_after_perform: -2
-      };
-    
+      const map = { new: 0, created: 1, performed: 2, canceled: -1, canceled_after_perform: -2 };
       const state = map[order.state] ?? 0;
     
-      // -2 holatda reason null bo‘lishi kerak (spec bo‘yicha)
-      const reason = state === -2 ? null : (order.cancel_reason ?? null);
+      // ❗️status=2 bo'lsa cancel_time=0, reason=null bo'lishi kerak
+      const isPerformed = state === 2;
     
       return res.json(ok(id, {
         transaction: txId,
         state,
         create_time: order.paycom_time ?? 0,
         perform_time: order.perform_time ?? 0,
-        cancel_time: order.cancel_time ?? 0,
-        reason
+        cancel_time: isPerformed ? 0 : (order.cancel_time ?? 0),
+        reason:      isPerformed ? null : (order.cancel_reason ?? null)
       }));
     }
+
 
 
     /* --------------------------- Fallback ---------------------------- */
