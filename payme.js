@@ -109,29 +109,34 @@ router.post('/', async (req, res) => {
     }
 
     /* ------------------------ CreateTransaction ---------------------- */
-    if (method === 'CreateTransaction') {
-      const orderId = String(params?.account?.order_id || '');
-      const order = Orders.get(orderId);
-      if (!order) return res.json(err(id, -31050, MESSAGES.notFoundOrder));
-      if (+order.amount !== +params.amount) return res.json(err(id, -31001, MESSAGES.amountMismatch));
-
-      // Idempotent: agar aynan shu tranzaksiya allaqachon yaratilgan bo‘lsa
-      if (order.state && order.state !== 'new') {
-        if (order.paycom_transaction_id === params.id) {
-          return res.json(ok(id, { transaction: order.paycom_transaction_id, state: 1, create_time: order.paycom_time }));
-        }
-        // Aks holda — bu hisob hozir yangi to‘lov qabul qilmaydi
-        return res.json(err(id, -31050, MESSAGES.accountLocked));
+  if (method === 'CreateTransaction') {
+    const orderId = String(params?.account?.order_id || '');
+    const order = Orders.get(orderId);
+    if (!order) return res.json(err(id, -31050, MESSAGES.notFoundOrder));
+    if (+order.amount !== +params.amount) return res.json(err(id, -31001, MESSAGES.amountMismatch));
+  
+    // ✅ Idempotent: aynan shu transaction id bilan takror so'rov bo'lsa — bir xil javob
+    if (order.state && order.state !== 'new') {
+      if (order.paycom_transaction_id === params.id) {
+        return res.json(ok(id, {
+          transaction: order.paycom_transaction_id,
+          state: 1,
+          create_time: order.paycom_time
+        }));
       }
-
-      // Yangi tranzaksiya
-      Object.assign(order, {
-        state: 'created',
-        paycom_transaction_id: params.id,
-        paycom_time: params.time
-      });
-      return res.json(ok(id, { transaction: params.id, state: 1, create_time: params.time }));
+      // 🚫 Bitta order uchun bitta transaction — boshqa params.id bilan yaratishni blokla
+      return res.json(err(id, -31050, MESSAGES.accountLocked));
     }
+  
+    // Yangi transaction
+    Object.assign(order, {
+      state: 'created',
+      paycom_transaction_id: params.id,
+      paycom_time: params.time
+    });
+    return res.json(ok(id, { transaction: params.id, state: 1, create_time: params.time }));
+  }
+
 
     /* ------------------------ PerformTransaction --------------------- */
     if (method === 'PerformTransaction') {
@@ -169,7 +174,7 @@ router.post('/', async (req, res) => {
     
       const now = Date.now();
     
-      // Idempotent javoblar
+      // ✅ Idempotent: allaqachon bekor bo'lgan bo'lsa, aynan o'sha natijani qaytar
       if (order.state === 'canceled_after_perform') {
         return res.json(ok(id, { transaction: txId, state: -2, cancel_time: order.cancel_time }));
       }
@@ -177,41 +182,44 @@ router.post('/', async (req, res) => {
         return res.json(ok(id, { transaction: txId, state: -1, cancel_time: order.cancel_time }));
       }
     
-      if (order.state === 'performed') {
-        order.state = 'canceled_after_perform';
-        order.cancel_time = now;
-        order.cancel_reason = params.reason ?? 0; // -2 holatda reason saqlaymiz
-        return res.json(ok(id, { transaction: txId, state: -2, cancel_time: order.cancel_time }));
-      }
+      // 🎯 Reason xaritasi:
+      // 5 -> -2; 3 -> -1; (aks holda: performed bo'lsa -2, bo'lmasa -1)
+      const r = Number(params.reason);
+      let targetState;
+      if (r === 5) targetState = -2;
+      else if (r === 3) targetState = -1;
+      else targetState = (order.state === 'performed') ? -2 : -1;
     
-      // created/new → -1
-      order.state = 'canceled';
       order.cancel_time = now;
-      order.cancel_reason = params.reason ?? 0;
-      return res.json(ok(id, { transaction: txId, state: -1, cancel_time: order.cancel_time }));
+      order.cancel_reason = isNaN(r) ? null : r;
+    
+      if (targetState === -2) {
+        order.state = 'canceled_after_perform';
+        return res.json(ok(id, { transaction: txId, state: -2, cancel_time: now }));
+      } else {
+        order.state = 'canceled';
+        return res.json(ok(id, { transaction: txId, state: -1, cancel_time: now }));
+      }
     }
 
     /* ------------------------- CheckTransaction ---------------------- */
     if (method === 'CheckTransaction') {
-      const txId = params.id;
-      const order = [...Orders.values()].find(o => o.paycom_transaction_id === txId);
-      if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound));
-    
-      const map = { new: 0, created: 1, performed: 2, canceled: -1, canceled_after_perform: -2 };
-      const state = map[order.state] ?? 0;
-    
-      // status=2 bo'lsa cancel_time=0, reason=null
-      const isPerformed = state === 2;
-    
-      return res.json(ok(id, {
-        transaction: txId,
-        state,
-        create_time: order.paycom_time ?? 0,
-        perform_time: order.perform_time ?? 0,
-        cancel_time: isPerformed ? 0 : (order.cancel_time ?? 0),
-        reason:      isPerformed ? null : (order.cancel_reason ?? null)
-      }));
-    }
+        const txId = params.id;
+        const order = [...Orders.values()].find(o => o.paycom_transaction_id === txId);
+        if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound));
+      
+        const map = { new: 0, created: 1, performed: 2, canceled: -1, canceled_after_perform: -2 };
+        const state = map[order.state] ?? 0;
+      
+        return res.json(ok(id, {
+          transaction: txId,
+          state,
+          create_time: order.paycom_time ?? 0,
+          perform_time: order.perform_time ?? 0,
+          cancel_time: (state === 2) ? 0 : (order.cancel_time ?? 0),
+          reason:      (state === 2) ? null : (order.cancel_reason ?? null) // 🔁 -1/-2 da reason'ni qaytaramiz
+        }));
+      }
 
     /* --------------------------- Fallback ---------------------------- */
     return res.json(err(id, -32601, MESSAGES.methodNotFound));
