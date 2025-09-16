@@ -67,7 +67,15 @@ router.get('/api/checkout-url', (req, res) => {
     return res.status(400).json({ error: 'order_id va amount (tiyin, integer) shart' });
   }
   const prev = Orders.get(orderId) || { amount: 0, state: 'new' };
-  Orders.set(orderId, { ...prev, amount });
+  //Orders.set(orderId, { ...prev, amount });
+  Orders.set(orderId, {
+  ...prev,
+  amount,
+  // query orqali kelsa — yozamiz, yo‘q bo‘lsa eski qiymatni saqlaymiz
+  chat_id:     prev?.chat_id ?? (req.query.chat_id ? String(req.query.chat_id) : undefined),
+  deliver_url: prev?.deliver_url ?? (req.query.deliver_url ? String(req.query.deliver_url) : undefined),
+  userId:      prev?.userId ?? (req.query.chat_id ? String(req.query.chat_id) : undefined) // fallback
+});
 
   const url = buildCheckoutUrl({
     merchantId:     process.env.PAYME_MERCHANT_ID,
