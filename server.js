@@ -4,6 +4,8 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { bus } from './events.js';
+
 
 import paymeRouter from './payme.js';
 import clickRouter from './click.js';
@@ -19,6 +21,23 @@ const app = express();
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Server-Sent Events: /admin/api/events
+app.get('/admin/api/events', basicAuth, (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+  });
+  res.write('\n');
+
+  const onPaid = (payload) => {
+    res.write(`event: paid\ndata:${JSON.stringify(payload)}\n\n`);
+  };
+  bus.on('paid', onPaid);
+
+  req.on('close', () => bus.off('paid', onPaid));
+});
 
 // Health
 app.get('/health', (_, res) => res.send('ok'));
