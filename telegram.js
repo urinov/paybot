@@ -1,6 +1,8 @@
 // telegram.js — bot logikasi (/start va webhook)
 import { Telegraf } from 'telegraf';
 import { nextOrderId, Orders } from './store.js';
+import fetch from 'node-fetch';
+
 
 const BOT_TOKEN     = process.env.BOT_TOKEN;
 const BASE_URL      = process.env.BASE_URL;      // https://<service>.onrender.com
@@ -40,6 +42,25 @@ bot.start(async (ctx) => {
 });
 
 bot.on('message', (ctx) => ctx.reply('To‘lov uchun /start ni bosing.', { disable_web_page_preview: true }));
+
+export async function createOneTimeInviteLink(channelId = TG_CHANNEL_ID) {
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/createChatInviteLink`;
+  const body = {
+    chat_id: channelId,
+    member_limit: 1,                                  // bir martalik
+    expire_date: Math.floor(Date.now()/1000) + 3600   // 1 soat
+  };
+  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(x=>x.json());
+  if (!r.ok) throw new Error('createChatInviteLink failed: '+JSON.stringify(r));
+  return r.result.invite_link;
+}
+
+export async function sendTelegramAccess(chatId, inviteLink, extraText) {
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+  const text = `✅ To‘lov qabul qilindi!\n\nKanalga kirish: ${inviteLink}${extraText ? `\n\n${extraText}` : ''}`;
+  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ chat_id: chatId, text }) }).then(x=>x.json());
+  if (!r.ok) throw new Error('sendMessage failed: '+JSON.stringify(r));
+}
 
 // Webhook URL idempotent
 if (BASE_URL) {
