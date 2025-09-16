@@ -18,5 +18,5 @@ export function buildCheckoutUrl({
   if(description) p.push(`description[${lang}]=${encodeURIComponent(description)}`);
   if(detailBase64) p.push(`detail=${detailBase64}`);
   const b64 = toBase64(p.join(';'));
-  return `${checkoutOrigin}/base64(${b64})`;
+  return `${checkoutOrigin}/${b64}`;
 }
