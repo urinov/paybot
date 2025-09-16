@@ -223,42 +223,37 @@ router.post('/', async (req, res) => {
     if (method === 'GetStatement') {
       const fromRaw = params?.from;
       const toRaw   = params?.to;
-
-      // 10 xonali (sekund) bo'lsa ms ga o'tkazamiz; 13 xonali bo'lsa o'zini olamiz
+    
       const normTs = (v) => {
         const n = Number(v) || 0;
-        return n < 1e12 ? n * 1000 : n;
-        // 1e12 dan kichik bo'lsa — sekund deb qabul qilamiz
+        return n < 1e12 ? n * 1000 : n; // sec -> ms
       };
-
+    
       const from = normTs(fromRaw);
       const to   = normTs(toRaw);
-
       if (!from || !to || from > to) {
         return res.json(err(id, -32602, MESSAGES.invalidParams));
       }
-
+    
       const map = { new: 0, created: 1, performed: 2, canceled: -1, canceled_after_perform: -2 };
       const wantedStates = new Set([1, 2, -1, -2]);
-
+    
       const transactions = [];
       for (const [orderId, o] of Orders.entries()) {
-        // faqat tranzaksiya yaratilgan buyurtmalar
         if (!o?.paycom_transaction_id || !o?.paycom_time) continue;
-
+    
         const createTime = Number(o.paycom_time);
         if (createTime < from || createTime > to) continue;
-
+    
         const state = map[o.state] ?? 0;
         if (!wantedStates.has(state)) continue;
-
+    
+        // 🔵 faqat order_id
         const account = { order_id: String(orderId) };
-        if (o.userId || o.user_id) account.user_id = String(o.userId || o.user_id);
-        if (o.product_id)          account.product_id = String(o.product_id);
-
+    
         transactions.push({
-          id: String(o.paycom_transaction_id),      // Payme transaction id
-          time: createTime,                         // umumiy 'time'
+          id: String(o.paycom_transaction_id),
+          time: createTime,
           amount: Number(o.amount) || 0,
           account,
           create_time: createTime,
@@ -269,9 +264,10 @@ router.post('/', async (req, res) => {
           reason: state === 2 ? null : (o.cancel_reason ?? null),
         });
       }
-
+    
       return res.json(ok(id, { transactions }));
     }
+
 
     /* --------------------------- Fallback ---------------------------- */
     return res.json(err(id, -32601, MESSAGES.methodNotFound));
