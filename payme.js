@@ -31,6 +31,29 @@ router.get('/api/new-order', (req, res) => {
   res.json({ order_id: id });
 });
 
+// helperlar yoniga qo'shing:
+const normMsg = (m) => {
+  if (typeof m === 'string') {
+    return { uz: m, ru: m, en: m };
+  }
+  return {
+    uz: m.uz || m.ru || m.en || 'Xatolik',
+    ru: m.ru || m.uz || m.en || 'Ошибка',
+    en: m.en || m.uz || m.ru || 'Error',
+  };
+};
+
+// eski:
+/// const err = (id, code, msg={}) => ({ jsonrpc: '2.0', error: { code, message: msg }, id });
+
+// yangi:
+const err = (id, code, msg = {}) => ({
+  jsonrpc: '2.0',
+  error: { code, message: normMsg(msg) },
+  id,
+});
+
+
 // Payme checkout URL (amount = tiyinda)
 router.get('/api/checkout-url', (req, res) => {
   const orderId = String(req.query.order_id || '');
