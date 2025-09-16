@@ -3,6 +3,8 @@ import { Router } from 'express';
 import { Orders, nextOrderId } from './store.js';
 import { buildCheckoutUrl } from './utils/buildCheckoutUrl.js';
 import { createOneTimeInviteLink, sendTelegramAccess } from './telegram.js'; // <-- ADD
+import { bus } from './events.js';
+import { notifyAdminNewPayment } from './telegram.js';
 
 const router = Router();
 
@@ -32,6 +34,22 @@ const normalizeMsg = (msg) => {
 
 const ok  = (id, result) => ({ jsonrpc: '2.0', result, id });
 const err = (id, code, msg) => ({ jsonrpc: '2.0', error: { code, message: normalizeMsg(msg) }, id });
+
+// ... PerformTransaction muvaffaqiyatli bo'ldi:
+bus.emit('paid', {
+  provider: 'payme',           // yoki 'click'
+  order_id,
+  user_id: order.userId,
+  amount: params.amount,       // tiyinda
+  at: Date.now()
+});
+
+await notifyAdminNewPayment({
+  provider: 'payme',
+  orderId: order_id,
+  tgId: order.userId,
+  amount: params.amount
+});
 
 /* ------------------------------- Auth ---------------------------------- */
 function isBasicAuthValid(req) {
