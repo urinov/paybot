@@ -13,7 +13,14 @@ router.get('/api/click-url', (req, res) => {
   if (!orderId || !amountTiyin) return res.status(400).json({ error: 'order_id va amount (tiyin) shart' });
 
   const prev = Orders.get(orderId) || { amount: 0, state: 'new' };
-  Orders.set(orderId, { ...prev, amount: amountTiyin });
+  //Orders.set(orderId, { ...prev, amount: amountTiyin });
+  Orders.set(orderId, {
+    ...prev,
+    amount: amountTiyin,
+    chat_id:     prev?.chat_id ?? (req.query.chat_id ? String(req.query.chat_id) : undefined),
+    deliver_url: prev?.deliver_url ?? (req.query.deliver_url ? String(req.query.deliver_url) : undefined),
+    userId:      prev?.userId ?? (req.query.chat_id ? String(req.query.chat_id) : undefined)
+  });
 
   const amountSoum = (amountTiyin / 100).toFixed(2);
   const u = new URL('https://my.click.uz/services/pay');
