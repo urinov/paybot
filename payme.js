@@ -7,16 +7,17 @@ const router = Router();
 
 /* ---------- Auth ---------- */
 function requirePaymeAuth(req, res) {
-  const xAuth = req.get('X-Auth');
-  if (!xAuth || xAuth !== process.env.PAYME_KEY) {
+  const basic = req.get('Authorization');
+  const expected = 'Basic ' + Buffer.from('Paycom:' + process.env.PAYME_KEY).toString('base64');
+  if (!basic || basic !== expected) {
     return res.status(200).json({
       jsonrpc: '2.0',
       error: { code: -32504, message: { uz: 'Ruxsat yo‘q', ru: 'Доступ запрещен', en: 'Unauthorized' } },
       id: req.body?.id ?? null
     });
   }
-  return null;
 }
+
 const ok  = (id, result) => ({ jsonrpc: '2.0', result, id });
 const err = (id, code, msg={}) => ({ jsonrpc: '2.0', error: { code, message: msg }, id });
 
