@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { Orders, nextOrderId } from './store.js';
 import { buildCheckoutUrl } from './utils/buildCheckoutUrl.js';
+import { createOneTimeInviteLink, sendTelegramAccess } from './telegram.js'; // <-- ADD
 
 const router = Router();
 
@@ -134,6 +135,21 @@ router.post('/', async (req, res) => {
         order.state = 'performed';
         order.perform_time = Date.now();
       }
+
+      // === ADD: to‘lovdan keyin kanalga dostup (bir martalik) ===
+      try {
+        const chatId = order.chat_id || order.userId; // ikkala nomni ham qo‘llab
+        if (!order.sent && chatId) {
+          const invite = await createOneTimeInviteLink();
+          await sendTelegramAccess(chatId, invite, order.deliver_url);
+          order.sent = true;
+        }
+      } catch (e) {
+        console.error('PAYME DELIVERY ERROR:', e);
+        // idempotent bo'lgani uchun bu yerda xatoni faqat log qilamiz
+      }
+      // === /ADD ===
+
       return res.json(ok(id, { transaction: txId, state: 2, perform_time: order.perform_time }));
     }
 
@@ -141,7 +157,7 @@ router.post('/', async (req, res) => {
     if (method === 'CancelTransaction') {
       const txId = params.id;
       const order = [...Orders.values()].find(o => o.paycom_transaction_id === txId);
-      if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound)); // :contentReference[oaicite:0]{index=0}
+      if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound));
     
       const now = Date.now();
     
@@ -156,7 +172,7 @@ router.post('/', async (req, res) => {
       if (order.state === 'performed') {
         order.state = 'canceled_after_perform';
         order.cancel_time = now;
-        order.cancel_reason = params.reason ?? 0; // ❗️ -2 holatida reason saqlaymiz
+        order.cancel_reason = params.reason ?? 0; // -2 holatda reason saqlaymiz
         return res.json(ok(id, { transaction: txId, state: -2, cancel_time: order.cancel_time }));
       }
     
@@ -167,18 +183,16 @@ router.post('/', async (req, res) => {
       return res.json(ok(id, { transaction: txId, state: -1, cancel_time: order.cancel_time }));
     }
 
-
-
     /* ------------------------- CheckTransaction ---------------------- */
     if (method === 'CheckTransaction') {
       const txId = params.id;
       const order = [...Orders.values()].find(o => o.paycom_transaction_id === txId);
-      if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound)); // :contentReference[oaicite:2]{index=2}
+      if (!order) return res.json(err(id, -31003, MESSAGES.txNotFound));
     
       const map = { new: 0, created: 1, performed: 2, canceled: -1, canceled_after_perform: -2 };
       const state = map[order.state] ?? 0;
     
-      // ❗️status=2 bo'lsa cancel_time=0, reason=null bo'lishi kerak
+      // status=2 bo'lsa cancel_time=0, reason=null
       const isPerformed = state === 2;
     
       return res.json(ok(id, {
@@ -190,8 +204,6 @@ router.post('/', async (req, res) => {
         reason:      isPerformed ? null : (order.cancel_reason ?? null)
       }));
     }
-
-
 
     /* --------------------------- Fallback ---------------------------- */
     return res.json(err(id, -32601, MESSAGES.methodNotFound));
