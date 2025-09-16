@@ -19,7 +19,7 @@ function requirePaymeAuth(req, res) {
 }
 
 const ok  = (id, result) => ({ jsonrpc: '2.0', result, id });
-const err = (id, code, msg={}) => ({ jsonrpc: '2.0', error: { code, message: msg }, id });
+//const err = (id, code, msg={}) => ({ jsonrpc: '2.0', error: { code, message: msg }, id });
 
 /* ---------- Public helpers ---------- */
 // Yangi order (ixtiyoriy)
