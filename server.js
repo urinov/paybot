@@ -24,6 +24,24 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/health', (_, res) => res.send('ok'));
 app.get('/',       (_, res) => res.send('OK'));
 
+// --- ADMIN AUTH (Basic) ---
+function unauthorized(res) {
+  res.set('WWW-Authenticate', 'Basic realm="admin"');
+  return res.status(401).send('Auth required');
+}
+function basicAuth(req, res, next) {
+  const hdr = req.headers.authorization || '';
+  const [scheme, cred] = hdr.split(' ');
+  if (scheme !== 'Basic' || !cred) return unauthorized(res);
+  const [user, pass] = Buffer.from(cred, 'base64').toString().split(':');
+  if (user === process.env.ADMIN_USER && pass === process.env.ADMIN_PASS) return next();
+  return unauthorized(res);
+}
+
+// Static dashboard files (quyida yaratamiz)
+app.use('/admin', basicAuth, express.static('public/admin'));
+
+
 // Telegram webhook endpoint
 app.post('/telegram/webhook', (req, res) => {
   bot.handleUpdate(req.body)
