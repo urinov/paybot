@@ -14,6 +14,10 @@ CLICK_MERCHANT_ID=43022
 CLICK_SECRET_KEY=OT097QYK5YaqWrv  
 CLICK_RETURN_URL=https://payme-sita.onrender.com
 
+ADMIN_USER=firdavs
+ADMIN_PASS=superStrongPass
+
+
 ## ⚡️ Callback’lar
 - Payme: `POST https://payme-sita.onrender.com/payme`
 - Click (Prepare/Complete): `POST https://payme-sita.onrender.com/click/callback`
