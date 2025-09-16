@@ -3,6 +3,8 @@ import { Router } from 'express';
 import { Orders } from './store.js';
 import { buildPrepareSign, buildCompleteSign } from './utils/clickSign.js';
 import { createOneTimeInviteLink, sendTelegramAccess } from './telegram.js'; // <-- ADD
+import { bus } from './events.js';
+import { notifyAdminNewPayment } from './telegram.js';
 
 const router = Router();
 
@@ -34,6 +36,22 @@ router.get('/api/click-url', (req, res) => {
   const url = u.toString();
   if (String(req.query.redirect) === '1') return res.redirect(url);
   return res.json({ url });
+});
+
+// ... PerformTransaction muvaffaqiyatli bo'ldi:
+bus.emit('paid', {
+  provider: 'payme',           // yoki 'click'
+  order_id,
+  user_id: order.userId,
+  amount: params.amount,       // tiyinda
+  at: Date.now()
+});
+
+await notifyAdminNewPayment({
+  provider: 'payme',
+  orderId: order_id,
+  tgId: order.userId,
+  amount: params.amount
 });
 
 // Callback (prepare/complete)
