@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { Orders } from './store.js';
 import { buildPrepareSign, buildCompleteSign } from './utils/clickSign.js';
+import { createOneTimeInviteLink, sendTelegramAccess } from './telegram.js'; // <-- ADD
 
 const router = Router();
 
@@ -87,6 +88,20 @@ router.post('/callback', async (req, res) => {
     if (Number(p.error) === 0) {
       order.state = 'performed';
       order.perform_time = Date.now();
+
+      // === ADD: to‘lovdan keyin kanalga dostup (bir martalik) ===
+      try {
+        const chatId = order.chat_id || order.userId; // ikkala nomni ham qo‘llab
+        if (!order.sent && chatId) {
+          const invite = await createOneTimeInviteLink();
+          await sendTelegramAccess(chatId, invite, order.deliver_url);
+          order.sent = true;
+        }
+      } catch (e) {
+        console.error('CLICK DELIVERY ERROR:', e);
+      }
+      // === /ADD ===
+
       return res.json({
         click_trans_id:      p.click_trans_id,
         merchant_trans_id:   orderId,
