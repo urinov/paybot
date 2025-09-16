@@ -4,6 +4,7 @@ import { nextOrderId, Orders } from './store.js';
 import fetch from 'node-fetch';
 
 
+
 const BOT_TOKEN     = process.env.BOT_TOKEN;
 const BASE_URL      = process.env.BASE_URL;      // https://<service>.onrender.com
 const TG_CHANNEL_ID = process.env.TG_CHANNEL_ID;
@@ -21,6 +22,20 @@ bot.start(async (ctx) => {
 
   Orders.set(orderId, { amount: amountTiyin, state: 'new', userId: ctx.from.id });
 
+
+  const ADMIN_TG_ID = process.env.ADMIN_TG_ID;
+
+export async function notifyAdminNewPayment({ provider, orderId, amount, tgId }) {
+  if (!ADMIN_TG_ID) return;
+  const sum = (amount/100).toLocaleString('uz-UZ');
+  const text = `💸 Yangi to‘lov!\n\nProvider: ${provider}\nOrder: ${orderId}\nAmount: ${sum} so‘m\nUser: ${tgId}`;
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ chat_id: ADMIN_TG_ID, text })
+  });
+}
+
+  
   // E’TIBOR: prefikslar qo‘yildi -> /payme/... va /click/...
   const paymeUrl = `${BASE_URL}/payme/api/checkout-url?order_id=${orderId}&amount=${amountTiyin}&redirect=1`;
   const clickUrl = `${BASE_URL}/click/api/click-url?order_id=${orderId}&amount=${amountTiyin}&redirect=1`;
