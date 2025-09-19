@@ -21,6 +21,7 @@ const __dirname  = path.dirname(__filename);
 const app = express();
 
 app.use(bodyParser.json());
+app.use(express.json());  
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
