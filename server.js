@@ -8,6 +8,10 @@ import { fileURLToPath } from 'url';
 import paymeRouter from './payme.js';
 import clickRouter from './click.js';
 import { bot } from './telegram.js';
+// server.js
+import { ensureSchema } from './store.js';
+await ensureSchema();    // agar "type": "module" bor bo‘lsa, top-level await ishlaydi
+
 
 dotenv.config();
 
