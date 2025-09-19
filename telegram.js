@@ -1,6 +1,6 @@
 // telegram.js — bot logikasi (/start va webhook)
 import { Telegraf } from 'telegraf';
-import { nextOrderId, Orders } from './store.js';
+import { nextOrderId } from './store.js';
 import fetch from 'node-fetch';
 
 
