@@ -9,7 +9,7 @@ const BASE_URL      = process.env.BASE_URL;      // https://<service>.onrender.c
 const TG_CHANNEL_ID = process.env.TG_CHANNEL_ID;
 if (!BOT_TOKEN) throw new Error('BOT_TOKEN env kerak');
 
-export const bot = new Telegraf(BOT_TOKEN);
+//export const bot = new Telegraf(BOT_TOKEN);
 export const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const fullName = (u) => [u?.first_name, u?.last_name].filter(Boolean).join(' ')
