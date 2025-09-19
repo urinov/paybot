@@ -1,7 +1,6 @@
 // payme.js — Paycom JSON-RPC + Checkout helper (prefix: /payme)
 import { Router } from 'express';
 import { Orders, nextOrderId } from './store.js';
-import { logOrderCreated, markOrderPerformed } from './store.js';
 import { buildCheckoutUrl } from './utils/buildCheckoutUrl.js';
 import { createOneTimeInviteLink, sendTelegramAccess } from './telegram.js'; // <-- ADD
 
