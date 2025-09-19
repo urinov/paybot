@@ -1,7 +1,6 @@
 // click.js — Click redirect + callback (prefiks: /click)
 import { Router } from 'express';
 import { Orders } from './store.js';
-import { logOrderCreated, markOrderPerformed } from './store.js';
 import { buildPrepareSign, buildCompleteSign } from './utils/clickSign.js';
 import { createOneTimeInviteLink, sendTelegramAccess } from './telegram.js'; // <-- ADD
 
