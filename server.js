@@ -30,10 +30,14 @@ app.get('/health', (_, res) => res.send('ok'));
 app.get('/',       (_, res) => res.send('OK'));
 
 // Telegram webhook endpoint
-app.post('/telegram/webhook', (req, res) => {
-  bot.handleUpdate(req.body)
-    .then(() => res.sendStatus(200))
-    .catch((e) => { console.error('bot.handleUpdate error', e); res.sendStatus(500); });
+app.post('/telegram/webhook', async (req, res) => {
+  try {
+    await bot.handleUpdate(req.body);
+    res.sendStatus(200);           // doim 200 qaytar
+  } catch (e) {
+    console.error('TG webhook error:', e);
+    res.sendStatus(200);           // xatoda ham 200 qaytar -> Telegram navbatni tozalaydi
+  }
 });
 
 /** MUHIM: Prefikslar.
