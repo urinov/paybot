@@ -3,14 +3,14 @@
 <div class="cards">
   <div class="card">
     <div class="kpi">Users</div>
-    <div class="num"><%= users %></div>
+    <div class="num"><%= users || 0 %></div>
   </div>
   <div class="card">
     <div class="kpi">Buyers</div>
-    <div class="num"><%= buyers %></div>
+    <div class="num"><%= buyers || 0 %></div>
   </div>
   <div class="card">
     <div class="kpi">Revenue (so'm)</div>
-    <div class="num"><%= revenue.toLocaleString('uz-UZ', { minimumFractionDigits: 2 }) %></div>
+    <div class="num"><%= (revenue || 0).toLocaleString('uz-UZ', { minimumFractionDigits: 2 }) %></div>
   </div>
 </div>
