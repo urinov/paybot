@@ -5,6 +5,23 @@ import { pool } from './db.js';
 
 export const adminRouter = express.Router();
 
+// admin.js tepasida:
+import express from 'express';
+import { pool } from './db.js';
+export const adminRouter = express.Router();
+
+// Authdan OLDIN:
+adminRouter.get('/_pingdb', async (req, res) => {
+  try {
+    const r = await pool.query('select now() as now');
+    res.send('DB OK: ' + r.rows[0].now);
+  } catch (e) {
+    console.error('PING DB ERROR:', e);
+    res.status(500).send('DB ERR: ' + (e.message || e.code));
+  }
+});
+
+
 function requireAdmin(req, res, next) {
   const c = basicAuth(req);
   if (!c || c.name !== process.env.ADMIN_USER || c.pass !== process.env.ADMIN_PASS) {
