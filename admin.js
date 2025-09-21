@@ -56,21 +56,61 @@ const safe = (fn) => async (req, res) => {
 
 // Dashboard
 adminRouter.get('/', safe(async (_req, res) => {
-  const [u, b, r] = await Promise.all([
-    pool.query('SELECT COUNT(*)::int AS c FROM subscribers'),
-    pool.query('SELECT COUNT(*)::int AS buyers FROM subscribers WHERE paid_access=TRUE'),
-    pool.query('SELECT COALESCE(SUM(amount), 0)::bigint AS sum FROM payments'),
-  ]);
-  res.render('admin/dashboard', {
-    users: u.rows[0]?.c || 0,
-    buyers: b.rows[0]?.buyers || 0,
-    revenue: Number(r.rows[0]?.sum || 0) / 100
-  });
+  try {
+    const [u, b, r] = await Promise.all([
+      pool.query('SELECT COUNT(*)::int AS c FROM subscribers'),
+      pool.query('SELECT COUNT(*)::int AS buyers FROM subscribers WHERE paid_access=TRUE'),
+      pool.query('SELECT COALESCE(SUM(amount), 0)::bigint AS sum FROM payments'),
+    ]);
+    res.render('admin/dashboard', {
+      users: u.rows[0]?.c || 0,
+      buyers: b.rows[0]?.buyers || 0,
+      revenue: Number(r.rows[0]?.sum || 0) / 100
+    });
+  } catch (e) {
+    console.error('Dashboard error:', e.stack);
+    res.status(500).send('Dashboard error: ' + e.message);
+  }
 }));
 
 // Subscribers (filter + CSV eksport)
 adminRouter.get('/subscribers', safe(async (req, res) => {
   const { paid, month, q, export: ex } = req.query;
+  let sql = 'SELECT * FROM subscribers';
+  const params = [];
+
+  if (paid) {
+    sql += ' WHERE paid_access = $1';
+    params.push(paid === 'true');
+  }
+  if (month) {
+    sql += (params.length ? ' AND' : ' WHERE') + ' to_char(registered_at, \'YYYY-MM\') = $' + (params.length + 1);
+    params.push(month);
+  }
+  if (q) {
+    sql += (params.length ? ' AND' : ' WHERE') + ' (username ILIKE $' + (params.length + 1) + ' OR full_name ILIKE $' + (params.length + 1) + ')';
+    params.push(`%${q}%`);
+  }
+  sql += ' ORDER BY registered_at DESC LIMIT 2000';
+
+  const { rows } = await pool.query(sql, params);
+
+  if (ex === 'csv') {
+    const cols = Object.keys(rows[0] || {});
+    const csv = [cols.join(',')]
+      .concat(rows.map(r => cols.map(c => JSON.stringify(r[c] ?? '')).join(',')))
+      .join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="subscribers.csv"');
+    return res.send(csv);
+  }
+
+  res.render('admin/subscribers', { rows, paid, month, q });
+}));
+
+// Payments (filter + CSV eksport)
+adminRouter.get('/payments', safe(async (req, res) => {
+  const { month, export: ex } = req.query;
   let sql = 'SELECT * FROM payments';
   const params = [];
 
