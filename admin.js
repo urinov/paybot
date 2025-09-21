@@ -5,11 +5,6 @@ import { pool } from './db.js';
 
 export const adminRouter = express.Router();
 
-// admin.js tepasida:
-import express from 'express';
-import { pool } from './db.js';
-export const adminRouter = express.Router();
-
 // Authdan OLDIN:
 adminRouter.get('/_pingdb', async (req, res) => {
   try {
