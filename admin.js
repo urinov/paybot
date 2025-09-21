@@ -2,6 +2,8 @@
 import express from 'express';
 import basicAuth from 'basic-auth';
 import { pool } from './db.js';
+import { ensureSchema, pool } from './db.js';
+
 
 export const adminRouter = express.Router();
 
