@@ -27,6 +27,15 @@ function requireAdmin(req, res, next) {
 }
 adminRouter.use(requireAdmin);
 
+// Xatoni qo‘lga oladigan helper
+const safe = (fn) => async (req, res) => {
+  try { await fn(req, res); }
+  catch (e) {
+    console.error('ADMIN ROUTE ERROR:', e);
+    res.status(500).send('Admin error: ' + (e.message || 'unknown'));
+  }
+};
+
 // Dashboard
 adminRouter.get('/', async (_req, res) => {
   const [u, b, r] = await Promise.all([
