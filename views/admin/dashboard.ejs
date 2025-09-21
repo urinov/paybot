@@ -1,0 +1,16 @@
+<% layout('admin/layout') -%>
+<h1>Dashboard</h1>
+<div class="cards">
+  <div class="card">
+    <div class="kpi">Users</div>
+    <div class="num"><%= users %></div>
+  </div>
+  <div class="card">
+    <div class="kpi">Buyers</div>
+    <div class="num"><%= buyers %></div>
+  </div>
+  <div class="card">
+    <div class="kpi">Revenue (so'm)</div>
+    <div class="num"><%= revenue.toLocaleString('uz-UZ', { minimumFractionDigits: 2 }) %></div>
+  </div>
+</div>
