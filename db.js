@@ -2,12 +2,10 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,        // External URL + ?sslmode=require
+  ssl: { rejectUnauthorized: false }                 // Render uchun SSL
 });
-
-export { pool };
 
 export async function ensureSchema() {
   await pool.query(`
@@ -28,8 +26,8 @@ export async function ensureSchema() {
       id        BIGSERIAL PRIMARY KEY,
       order_id  TEXT,
       chat_id   BIGINT,
-      provider  TEXT,
-      amount    BIGINT,
+      provider  TEXT,          -- 'payme'|'click'
+      amount    BIGINT,        -- tiyinda (so'm*100)
       paid_at   TIMESTAMPTZ DEFAULT now()
     );
 
@@ -41,10 +39,10 @@ export async function ensureSchema() {
     );
 
     CREATE TABLE IF NOT EXISTS webhook_logs (
-      id        BIGSERIAL PRIMARY KEY,
-      provider  TEXT,
-      level     TEXT,
-      payload   JSONB,
+      id         BIGSERIAL PRIMARY KEY,
+      provider   TEXT,
+      level      TEXT,
+      payload    JSONB,
       created_at TIMESTAMPTZ DEFAULT now()
     );
   `);
