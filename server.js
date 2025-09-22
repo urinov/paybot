@@ -17,6 +17,10 @@ app.set('views', path.join(__dirname, 'views'));
 
 app.use('/admin', adminRouter);
 
+app.get('/', (req, res) => {
+  res.send('Server ishlayapti!');
+});
+
 app.use((req, res) => res.status(404).send('Not Found'));
 
 app.use((err, req, res, _next) => {
