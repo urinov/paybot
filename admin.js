@@ -5,8 +5,6 @@ import { pool, ensureSchema } from './db.js';
 export const adminRouter = express.Router();
 
 /* ---------- Diagnostics (authsiz) ---------- */
-
-// DB ping (ulanishni tekshirish)
 adminRouter.get('/_pingdb', async (_req, res) => {
   try {
     const r = await pool.query('SELECT now() AS now');
@@ -17,7 +15,6 @@ adminRouter.get('/_pingdb', async (_req, res) => {
   }
 });
 
-// Jadval/migratsiya init (bir martalik fast-fix uchun)
 adminRouter.get('/_init', async (_req, res) => {
   try {
     await ensureSchema();
@@ -31,7 +28,6 @@ adminRouter.get('/_init', async (_req, res) => {
 });
 
 /* ---------- Auth (Basic) ---------- */
-
 function requireAdmin(req, res, next) {
   const c = basicAuth(req);
   if (!c || c.name !== process.env.ADMIN_USER || c.pass !== process.env.ADMIN_PASS) {
@@ -42,30 +38,22 @@ function requireAdmin(req, res, next) {
 }
 adminRouter.use(requireAdmin);
 
-/* ---------- Helper: xatolarni tozalab ko‘rsatish ---------- */
+/* ---------- Helper ---------- */
 const safe = (fn) => async (req, res) => {
   try {
     await fn(req, res);
   } catch (e) {
     console.error('ADMIN ROUTE ERROR:', e.stack);
-    res.status(500).send('Admin error: ' + (e.message || 'unknown'));
+    res.status(500).send('Admin error: ' + e.message);
   }
 };
 
 /* ---------- Routes ---------- */
-
-// Dashboard
 adminRouter.get('/', safe(async (_req, res) => {
   try {
-    const [u, b, r] = await Promise.all([
-      pool.query('SELECT COUNT(*)::int AS c FROM subscribers'),
-      pool.query('SELECT COUNT(*)::int AS buyers FROM subscribers WHERE paid_access=TRUE'),
-      pool.query('SELECT COALESCE(SUM(amount), 0)::bigint AS sum FROM payments'),
-    ]);
+    const result = await pool.query('SELECT now() AS server_time'); // Sinov so‘rovi
     res.render('admin/dashboard', {
-      users: u.rows[0]?.c || 0,
-      buyers: b.rows[0]?.buyers || 0,
-      revenue: Number(r.rows[0]?.sum || 0) / 100
+      serverTime: result.rows[0].server_time.toISOString()
     });
   } catch (e) {
     console.error('Dashboard error:', e.stack);
@@ -73,7 +61,6 @@ adminRouter.get('/', safe(async (_req, res) => {
   }
 }));
 
-// Subscribers (filter + CSV eksport)
 adminRouter.get('/subscribers', safe(async (req, res) => {
   const { paid, month, q, export: ex } = req.query;
   let sql = 'SELECT * FROM subscribers';
@@ -97,9 +84,7 @@ adminRouter.get('/subscribers', safe(async (req, res) => {
 
   if (ex === 'csv') {
     const cols = Object.keys(rows[0] || {});
-    const csv = [cols.join(',')]
-      .concat(rows.map(r => cols.map(c => JSON.stringify(r[c] ?? '')).join(',')))
-      .join('\n');
+    const csv = [cols.join(',')].concat(rows.map(r => cols.map(c => JSON.stringify(r[c] ?? '')).join(','))).join('\n');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="subscribers.csv"');
     return res.send(csv);
@@ -108,7 +93,6 @@ adminRouter.get('/subscribers', safe(async (req, res) => {
   res.render('admin/subscribers', { rows, paid, month, q });
 }));
 
-// Payments (filter + CSV eksport)
 adminRouter.get('/payments', safe(async (req, res) => {
   const { month, export: ex } = req.query;
   let sql = 'SELECT * FROM payments';
@@ -124,9 +108,7 @@ adminRouter.get('/payments', safe(async (req, res) => {
 
   if (ex === 'csv') {
     const cols = Object.keys(rows[0] || {});
-    const csv = [cols.join(',')]
-      .concat(rows.map(r => cols.map(c => JSON.stringify(r[c] ?? '')).join(',')))
-      .join('\n');
+    const csv = [cols.join(',')].concat(rows.map(r => cols.map(c => JSON.stringify(r[c] ?? '')).join(','))).join('\n');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="payments.csv"');
     return res.send(csv);
@@ -135,7 +117,6 @@ adminRouter.get('/payments', safe(async (req, res) => {
   res.render('admin/payments', { rows, month });
 }));
 
-// Broadcast (segmentli rassilka)
 adminRouter.get('/broadcast', (_req, res) =>
   res.render('admin/broadcast', { ok: null, fail: null, total: null })
 );
@@ -175,7 +156,7 @@ adminRouter.post('/broadcast', express.urlencoded({ extended: true }), safe(asyn
     } catch {
       fail++;
     }
-    if (i % 30 === 29) await new Promise(r => setTimeout(r, 1000)); // 30/s throttling
+    if (i % 30 === 29) await new Promise(r => setTimeout(r, 1000));
   }
 
   res.render('admin/broadcast', { ok, fail, total: rows.length });
