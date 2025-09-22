@@ -1,2 +1,15 @@
 <h1>Dashboard</h1>
-<p><%= message %></p>
+<div class="cards">
+  <div class="card">
+    <div class="kpi">Obunachilar</div>
+    <div class="num"><%= users %></div>
+  </div>
+  <div class="card">
+    <div class="kpi">Sotib olganlar</div>
+    <div class="num"><%= buyers %></div>
+  </div>
+  <div class="card">
+    <div class="kpi">Daromad (so'm)</div>
+    <div class="num"><%= revenue.toLocaleString('uz-UZ', { minimumFractionDigits: 2 }) %></div>
+  </div>
+</div>
