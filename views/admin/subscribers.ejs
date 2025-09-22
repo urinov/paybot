@@ -1,0 +1,33 @@
+<h1>Obunachilar</h1>
+<table>
+  <thead>
+    <tr>
+      <th>Chat ID</th>
+      <th>Username</th>
+      <th>Full Name</th>
+      <th>Ro'yhatdan o'tgan sana</th>
+      <th>To'lov qildi?</th>
+      <th>To'lov usuli</th>
+      <th>To'lov vaqti</th>
+      <th>Order ID</th>
+      <th>Amount (so'm)</th>
+      <th>Kanalga qo'shilgan vaqti</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% subscribers.forEach(sub => { %>
+      <tr>
+        <td><%= sub.chat_id %></td>
+        <td><%= sub.username || '-' %></td>
+        <td><%= sub.full_name || '-' %></td>
+        <td><%= sub.registered_at.toISOString().split('T')[0] %></td>
+        <td><%= sub.paid_access ? 'Ha' : 'Yo\'q' %></td>
+        <td><%= sub.paid_via || '-' %></td>
+        <td><%= sub.paid_at ? sub.paid_at.toISOString() : '-' %></td>
+        <td><%= sub.last_order_id || '-' %></td>
+        <td><%= (sub.last_amount / 100).toLocaleString('uz-UZ') || '-' %></td>
+        <td><%= sub.access_sent_at ? sub.access_sent_at.toISOString() : '-' %></td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
