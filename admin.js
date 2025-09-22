@@ -27,7 +27,7 @@ const safe = (fn) => async (req, res) => {
 /* ---------- Routes ---------- */
 adminRouter.get('/', safe(async (_req, res) => {
   try {
-    res.render('admin/dashboard', { message: 'Dashboard ishlaydi!' });
+    res.render('admin/dashboard', { message: 'Dashboard to‘liq ishlayapti!' });
   } catch (e) {
     console.error('Dashboard error:', e.stack);
     res.status(500).send('Dashboard error: ' + e.message);
