@@ -1,5 +1,4 @@
-<% layout('admin/layout') -%>
-<h1>Broadcast</h1>
+<h1>Rassilka</h1>
 <% if (ok !== null) { %>
   <p><b>Natija:</b> OK: <%= ok %>, Fail: <%= fail %>, Jami: <%= total %></p>
 <% } %>
@@ -8,12 +7,11 @@
     <select name="segment" required>
       <option value="buyers_all">Barcha sotib olganlar</option>
       <option value="buyers_month">Ma'lum oyda sotib olganlar</option>
-      <option value="users_not_bought">Botni ishlatgan, lekin sotib olmagan</option>
-      <option value="interested_month">Ma'lum oyda ro'yxatdan o'tib sotib olmagan</option>
+      <option value="users_not_bought">Botni ishlatgan, lekin sotib olmaganlar</option>
+      <option value="interested_month">Ma'lum oyda ro'yxatdan o'tgan, sotib olmaganlar</option>
     </select>
   </label>
   <label>Oy (YYYY-MM) <input type="text" name="month" placeholder="2025-09"/></label>
-  <label>Xabar</label>
-  <textarea name="text" rows="6" placeholder="Matnni kiriting..." required></textarea>
+  <label>Xabar <textarea name="text" rows="6" placeholder="Matnni kiriting..." required></textarea></label>
   <button type="submit">Yuborish</button>
 </form>
