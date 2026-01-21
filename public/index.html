@@ -31,14 +31,14 @@
 
     async function startPayme() {
       const orderId = await createOrder();
-      const resp = await fetch(`/payme/api/checkout-url?order_id=${orderId}&amount=1100000&redirect=1`);
+      const resp = await fetch(`/payme/api/checkout-url?order_id=${orderId}&amount=9700000&redirect=1`);
       // redirect=1 -> backend darhol Payme sahifasiga yo'naltiradi
       // Agar Render staticdan ochsangiz, 302 ni brauzer bajaradi
     }
 
     async function startClick() {
       const orderId = await createOrder();
-      const resp = await fetch(`/click/api/click-url?order_id=${orderId}&amount=1100000&redirect=1`);
+      const resp = await fetch(`/click/api/click-url?order_id=${orderId}&amount=9700000&redirect=1`);
     }
 
     document.getElementById('paymeBtn').onclick = startPayme;
