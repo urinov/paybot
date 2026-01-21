@@ -17,7 +17,7 @@ const soM = (tiyin) => (tiyin/100).toLocaleString('uz-UZ',{minimumFractionDigits
 
 bot.start(async (ctx) => {
   const orderId = nextOrderId();
-  const amountTiyin = 1_100_000; // 11 000 so'm (demo)
+  const amountTiyin = 9_700_000; // 11 000 so'm (demo)
 
   Orders.set(orderId, { amount: amountTiyin, state: 'new', userId: ctx.from.id });
 
